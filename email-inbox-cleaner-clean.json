@@ -1,0 +1,198 @@
+{
+  "name": "Email inbox cleaner + draft replies",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "simple": false,
+        "filters": { "readStatus": "unread" },
+        "options": {}
+      },
+      "id": "90ab052f-2c18-415f-8c00-a3ee59d82e7a",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "=Subject: {{ $json.subject }}\nFrom: {{ $json.from?.text }}\n\n{{ ($json.text || '').slice(0, 3000) }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "urgent",
+              "description": "Time-sensitive, needs action today: deadlines, outages, payment problems, requests from boss or clients flagged as urgent."
+            },
+            {
+              "category": "needs reply",
+              "description": "A real person is asking a question or expecting a response, but it is not time-critical."
+            },
+            {
+              "category": "newsletter",
+              "description": "Newsletters, marketing emails, digests, promotions, automated product updates."
+            },
+            {
+              "category": "low priority",
+              "description": "Notifications, receipts, FYIs, and anything that needs no action."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "262cb877-ec3a-4179-8123-b9064fce16af",
+      "name": "Text Classifier",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": { "options": {} },
+      "id": "db6c07b0-75a0-4549-9b74-c52d82ca4998",
+      "name": "Classifier Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [300, 540],
+      "credentials": {
+        "googlePalmApi": { "id": "EbSgdoaRmpkC9QR2", "name": "Google Gemini(PaLM) Api account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": ["Label_6405125892426961612"]
+      },
+      "id": "d5ef3ff9-3af9-472a-bbd0-897c91cba854",
+      "name": "Label: Urgent",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [640, 0],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": ["Label_6909249671532927725"]
+      },
+      "id": "b9f4ab62-c91d-4d80-af8d-a6507b5bf35f",
+      "name": "Label: Needs Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [640, 200],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": ["Label_5765522856583484231"]
+      },
+      "id": "733ad59b-5d54-4e09-b312-2af420c5f320",
+      "name": "Label: Newsletter",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [640, 420],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": ["Label_4779851863185681727"]
+      },
+      "id": "16f5285a-8284-4fc0-98d9-4051c4019915",
+      "name": "Label: Low Priority",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [640, 620],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a short, polite, professional reply to the email below. Match the sender's tone, answer any questions you can, and do not invent facts, dates, or commitments. If information is missing, say you'll follow up.\n\nEnd the email with this sign-off:\nBest regards,\nOlagunju Oluwasegun\n\nSubject: {{ $('Gmail Trigger').item.json.subject }}\nFrom: {{ $('Gmail Trigger').item.json.from?.text }}\n\n{{ ($('Gmail Trigger').item.json.text || '').slice(0, 3000) }}\n\nReturn only the reply body, with no subject line and no commentary."
+      },
+      "id": "2bace68f-f8e2-448c-bdd4-e81f07b9190b",
+      "name": "Write Reply",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [980, 100]
+    },
+    {
+      "parameters": { "options": {} },
+      "id": "bcd3ce1f-6d4f-43ab-8edb-e30ddbaf57f3",
+      "name": "Reply Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [980, 320],
+      "credentials": {
+        "googlePalmApi": { "id": "EbSgdoaRmpkC9QR2", "name": "Google Gemini(PaLM) Api account" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "=Re: {{ $('Gmail Trigger').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}",
+          "sendTo": "={{ $('Gmail Trigger').item.json.from?.value?.[0]?.address }}"
+        }
+      },
+      "id": "c470af73-716c-4f97-bfc4-746daac60f7d",
+      "name": "Create Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1320, 100],
+      "credentials": {
+        "gmailOAuth2": { "id": "SlH0XkXg5NtMQh3E", "name": "Gmail account" }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [[{ "node": "Text Classifier", "type": "main", "index": 0 }]]
+    },
+    "Classifier Model": {
+      "ai_languageModel": [[{ "node": "Text Classifier", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Text Classifier": {
+      "main": [
+        [{ "node": "Label: Urgent", "type": "main", "index": 0 }],
+        [{ "node": "Label: Needs Reply", "type": "main", "index": 0 }],
+        [{ "node": "Label: Newsletter", "type": "main", "index": 0 }],
+        [{ "node": "Label: Low Priority", "type": "main", "index": 0 }]
+      ]
+    },
+    "Label: Urgent": {
+      "main": [[{ "node": "Write Reply", "type": "main", "index": 0 }]]
+    },
+    "Label: Needs Reply": {
+      "main": [[{ "node": "Write Reply", "type": "main", "index": 0 }]]
+    },
+    "Reply Model": {
+      "ai_languageModel": [[{ "node": "Write Reply", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Write Reply": {
+      "main": [[{ "node": "Create Draft", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "tags": []
+}
